@@ -1,5 +1,11 @@
 import re
 
+class HeaderObject:
+    def __init__(self, level, line_number, parent=None):
+        self.level = level
+        self.line_number = line_number
+        self.parent = parent
+
 def adjust_header_level(line, operation, levels):
     header_pattern = re.compile(r'^(#+)\s(.*)$')
     match = header_pattern.match(line)
@@ -34,26 +40,34 @@ def check_header_levels(lines, operation, levels):
             return f"Warning: Decreasing the header levels by {levels} will result in losing some headers."
     return None
 
-def find_parent_level(lines, index):
-    for i in range(index - 1, -1, -1):
-        header_pattern = re.compile(r'^(#+)\s(.*)$')
-        match = header_pattern.match(lines[i])
-        if match:
-            return len(match.group(1))
-    return 0
-
-def auto_decrease_levels(lines):
+def create_header_objects(lines):
+    header_objects = []
     header_pattern = re.compile(r'^(#+)\s(.*)$')
-    adjusted_lines = lines.copy()
 
-    for i in range(len(lines) - 1, -1, -1):
-        match = header_pattern.match(lines[i])
+    for line_number, line in enumerate(lines, start=1):
+        match = header_pattern.match(line)
         if match:
             current_level = len(match.group(1))
-            parent_level = find_parent_level(lines, i)
-            if current_level - parent_level > 1:
-                adjusted_level = parent_level + 1
-                adjusted_lines[i] = '#' * adjusted_level + ' ' + match.group(2) + '\n'
+            parent = None
+            for header in reversed(header_objects):
+                if header.level < current_level:
+                    parent = header
+                    break
+            header_object = HeaderObject(current_level, line_number, parent)
+            header_objects.append(header_object)
+
+    return header_objects
+
+def auto_decrease_levels(lines):
+    header_objects = create_header_objects(lines)
+    adjusted_lines = lines.copy()
+
+    for header in header_objects:
+        if header.parent is None:
+            adjusted_lines[header.line_number - 1] = '# ' + adjusted_lines[header.line_number - 1].lstrip('#')
+        else:
+            new_level = header.parent.level + 1
+            adjusted_lines[header.line_number - 1] = '#' * new_level + ' ' + adjusted_lines[header.line_number - 1].lstrip('#')
 
     return adjusted_lines
 
