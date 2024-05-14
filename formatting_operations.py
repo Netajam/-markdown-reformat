@@ -65,10 +65,10 @@ def auto_decrease_levels(lines, start_line, end_line):
     for header in header_objects:
         if start_line <= header.line_number <= end_line:
             if header.parent is None or header.parent.line_number < start_line:
-                adjusted_lines[header.line_number - 1] = '# ' + adjusted_lines[header.line_number - 1].lstrip('#')
+                new_level = 1
             else:
                 new_level = header.parent.level + 1
-                adjusted_lines[header.line_number - 1] = '#' * new_level + ' ' + adjusted_lines[header.line_number - 1].lstrip('#')
+            adjusted_lines[header.line_number - 1] = '#' * new_level + ' ' + adjusted_lines[header.line_number - 1].lstrip('#')
 
     return adjusted_lines
 
@@ -79,6 +79,11 @@ def reformat_markdown_file(file_path, operation, levels, start_line=None, end_li
     warning_message = check_header_levels(lines, operation, levels)
     if warning_message:
         return warning_message
+
+    if start_line is None:
+        start_line = 1
+    if end_line is None:
+        end_line = len(lines)
 
     if operation == 'auto_decrease':
         reformatted_lines = auto_decrease_levels(lines, start_line, end_line)
